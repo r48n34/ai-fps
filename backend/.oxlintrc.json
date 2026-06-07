@@ -1,0 +1,15 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "ignorePatterns": ["*.js"],
+    "plugins": ["typescript", "unicorn", "oxc"],
+    "categories": {
+        "correctness": "error"
+    },
+    "rules": {
+        "no-extra-boolean-cast": "off",
+        "no-new-array": "off"
+    },
+    "env": {
+        "builtin": true
+    }
+}
