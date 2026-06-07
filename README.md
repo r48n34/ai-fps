@@ -1,5 +1,7 @@
 # ai-fps
 
+![https://github.com/r48n34/ai-fps](/assert/preview.png)
+
 A browser-based multiplayer PVP FPS prototype built with a TypeScript
 Colyseus server and a React/Three.js client. Players join a shared arena, move
 with first-person controls, shoot other connected players, reload, respawn, and
@@ -144,7 +146,5 @@ This is an early public prototype. The gameplay code is intentionally compact
 and focused on the core multiplayer FPS loop rather than account systems,
 matchmaking, persistence, or production hardening.
 
-## License
-
-No license has been declared yet. Add a `LICENSE` file before accepting external
-contributions or reuse.
+## Roadmap
+- [ ] Make hit notifications and sound

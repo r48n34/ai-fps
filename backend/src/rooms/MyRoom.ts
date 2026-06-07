@@ -55,6 +55,8 @@ const MAX_CHAT_MESSAGES = 30;
 const MAX_PITCH = Math.PI / 2 - 0.08;
 const MIN_PITCH = -MAX_PITCH;
 const PATCH_RATE_MS = 1000 / 45;
+const HEAD_RADIUS = 0.34;
+const HEAD_CENTER_OFFSET = 0.16;
 
 export class MyRoom extends Room {
     maxClients = GAME_CONFIG.maxClients;
@@ -375,12 +377,23 @@ export class MyRoom extends Room {
                 y: target.y + targetHeight / 2,
                 z: target.z,
             };
-            const distance = intersectRaySphere(
+            const bodyDistance = intersectRaySphere(
                 origin,
                 direction,
                 targetCenter,
                 GAME_CONFIG.playerRadius + 0.2,
             );
+            const headDistance = intersectRaySphere(
+                origin,
+                direction,
+                {
+                    x: target.x,
+                    y: target.y + targetHeight + HEAD_CENTER_OFFSET,
+                    z: target.z,
+                },
+                HEAD_RADIUS,
+            );
+            const distance = nearestHitDistance(bodyDistance, headDistance);
 
             if (
                 distance === undefined ||
@@ -597,6 +610,16 @@ function intersectRaySphere(
     }
 
     return projection - Math.sqrt(radius ** 2 - distanceSquared);
+}
+
+function nearestHitDistance(...distances: Array<number | undefined>) {
+    return distances.reduce<number | undefined>((nearest, distance) => {
+        if (distance === undefined) {
+            return nearest;
+        }
+
+        return nearest === undefined ? distance : Math.min(nearest, distance);
+    }, undefined);
 }
 
 function isShotBlocked(

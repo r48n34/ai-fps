@@ -114,6 +114,47 @@ describe("pvp fps room", () => {
         assert.strictEqual(room.state.chat.at(-1)?.text, "message 34");
     });
 
+    it("registers head hits above the body hit volume", async () => {
+        const room = await colyseus.createRoom<MyRoomState>("my_room", {});
+        const attacker = await colyseus.connectTo(room, { name: "Headshot" });
+        const victim = await colyseus.connectTo(room, { name: "Target" });
+
+        await room.waitForNextPatch();
+
+        const attackerState = room.state.players.get(attacker.sessionId);
+        const victimState = room.state.players.get(victim.sessionId);
+
+        assert(attackerState);
+        assert(victimState);
+
+        attackerState.x = 0;
+        attackerState.y = 0;
+        attackerState.z = 31;
+        attackerState.yaw = 0;
+        victimState.x = 0;
+        victimState.y = 0;
+        victimState.z = 26;
+
+        const shotDistance = attackerState.z - victimState.z;
+        const shooterEyeHeight = GAME_CONFIG.standingHeight * 0.88;
+        const targetHeadHeight = GAME_CONFIG.standingHeight + 0.16;
+        const headPitch = Math.atan2(
+            targetHeadHeight - shooterEyeHeight,
+            shotDistance,
+        );
+        const hitEvents: Array<{ targetName: string }> = [];
+
+        attacker.onMessage("hit", (message) => {
+            hitEvents.push(message);
+        });
+
+        attacker.send("shoot", { yaw: 0, pitch: headPitch });
+        await waitFor(() => hitEvents.length === 1);
+
+        assert.strictEqual(hitEvents[0]?.targetName, "Target");
+        assert.strictEqual(victimState.health, 100 - GAME_CONFIG.bulletDamage);
+    });
+
     it("damages, kills, scores, and respawns players", async () => {
         const room = await colyseus.createRoom<MyRoomState>("my_room", {});
         const attacker = await colyseus.connectTo(room, { name: "Attacker" });
