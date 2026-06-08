@@ -1,0 +1,21 @@
+{
+    "restoreTerminals.runOnStartup": true,
+    "restoreTerminals.terminals": [
+        {
+            "splitTerminals": [
+                {
+                    "name": "Frontend",
+                    "icon": "globe",
+                    "commands": ["cd frontend", "yarn dev"]
+                },
+                {
+                    "name": "Backend",
+                    "icon": "server",
+                    "commands": ["cd backend", "yarn dev"]
+                }
+            ]
+        }
+    ],
+    "typescript.experimental.useTsgo": true,
+    "js/ts.experimental.useTsgo": true
+}
