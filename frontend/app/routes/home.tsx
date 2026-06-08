@@ -795,7 +795,7 @@ export default function Home() {
 
             setRoom(joinedRoom);
             setLocalSessionId(joinedRoom.sessionId);
-            setStatus("Connected. Click the game to lock your aim.");
+            setStatus("Connected");
         } catch (error) {
             setStatus(
                 error instanceof Error
@@ -817,13 +817,55 @@ export default function Home() {
         <main className="game-shell">
             {!room ? (
                 <section className="join-panel" aria-label="Join game">
-                    <div>
-                        <p className="eyebrow">GameU Arena</p>
-                        <h1>PVP FPS</h1>
+                    <div className="join-glow" aria-hidden="true" />
+                    <header className="join-header">
+                        <div className="join-brand">
+                            <div className="join-logo" aria-hidden="true">
+                                <svg
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <circle cx="12" cy="12" r="9" />
+                                    <line x1="12" y1="3" x2="12" y2="6" />
+                                    <line x1="12" y1="18" x2="12" y2="21" />
+                                    <line x1="3" y1="12" x2="6" y2="12" />
+                                    <line x1="18" y1="12" x2="21" y2="12" />
+                                    <circle
+                                        cx="12"
+                                        cy="12"
+                                        r="2"
+                                        fill="currentColor"
+                                    />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="eyebrow">
+                                    <span className="status-dot" />
+                                    GameU Arena
+                                </p>
+                                <h1>
+                                    PVP{" "}
+                                    <span className="title-accent">FPS</span>
+                                </h1>
+                            </div>
+                        </div>
                         <p className="join-copy">
-                            Enter a name and jump into the shared handgun arena.
+                            Drop into a live handgun arena. Lock on, fire first,
+                            climb the leaderboard.
                         </p>
-                    </div>
+                    </header>
+                    <ul className="feature-pills" aria-label="Game features">
+                        <li>
+                            <span className="pill-dot" /> Live Multiplayer
+                        </li>
+                        <li>
+                            <span className="pill-dot" /> Free to Play
+                        </li>
+                    </ul>
                     <form
                         className="join-form"
                         onSubmit={(event) => {
@@ -831,23 +873,94 @@ export default function Home() {
                             void joinGame();
                         }}
                     >
-                        <label htmlFor="player-name">Player name</label>
-                        <input
-                            id="player-name"
-                            maxLength={18}
-                            onChange={(event) => setName(event.target.value)}
-                            placeholder="Player"
-                            value={name}
-                        />
-                        <button type="submit">Join Arena</button>
+                        <label htmlFor="player-name" className="input-label">
+                            <span>Callsign</span>
+                            <span className="char-count">{name.length}/18</span>
+                        </label>
+                        <div className="input-wrap">
+                            <svg
+                                className="input-icon"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            <input
+                                id="player-name"
+                                maxLength={18}
+                                onChange={(event) =>
+                                    setName(event.target.value)
+                                }
+                                placeholder="Enter your callsign"
+                                value={name}
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            className="join-button"
+                            disabled={!name.trim()}
+                        >
+                            <span>Join Arena</span>
+                            <svg
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <line x1="5" y1="12" x2="19" y2="12" />
+                                <polyline points="12 5 19 12 12 19" />
+                            </svg>
+                        </button>
                     </form>
-                    <p className="status-line">{status}</p>
+                    <div className="status-line">
+                        <span className="status-dot" aria-hidden="true" />
+                        <span>{status}</span>
+                    </div>
+                    <div className="join-tips">
+                        <p className="tips-title">Controls</p>
+                        <div className="tips-grid">
+                            <div className="tip">
+                                <kbd>WASD</kbd>
+                                <span>Move</span>
+                            </div>
+                            <div className="tip">
+                                <kbd>Mouse</kbd>
+                                <span>Aim</span>
+                            </div>
+                            <div className="tip">
+                                <kbd>LMB</kbd>
+                                <span>Shoot</span>
+                            </div>
+                            <div className="tip">
+                                <kbd>RMB</kbd>
+                                <span>Zoom</span>
+                            </div>
+                            <div className="tip">
+                                <kbd>R</kbd>
+                                <span>Reload</span>
+                            </div>
+                            <div className="tip">
+                                <span className="tip-keys">
+                                    <kbd>1</kbd>
+                                    <kbd>2</kbd>
+                                </span>
+                                <span>Weapons</span>
+                            </div>
+                        </div>
+                    </div>
                 </section>
             ) : (
                 <section
-                    className={`game-stage ${
-                        localPlayer?.isAlive === false ? "is-dead" : ""
-                    }`}
+                    className={`game-stage ${localPlayer?.isAlive === false ? "is-dead" : ""}`}
                     onClick={(event) => lockPointer(event.currentTarget)}
                 >
                     <Canvas
@@ -1318,9 +1431,7 @@ function GameHud({
             )}
             {hitMarker && (
                 <div
-                    className={`hit-marker ${
-                        hitMarker.killed ? "is-kill" : ""
-                    }`}
+                    className={`hit-marker ${hitMarker.killed ? "is-kill" : ""}`}
                     aria-hidden="true"
                 >
                     <span />
