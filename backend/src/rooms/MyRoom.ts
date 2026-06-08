@@ -147,12 +147,23 @@ export class MyRoom extends Room {
         this.gameState.players.set(client.sessionId, player);
         this.inputs.set(client.sessionId, { ...DEFAULT_INPUT });
         this.lastShotAt.set(client.sessionId, 0);
+
+        console.log(
+            `[server] Player joined: ${player.name} (${client.sessionId})`,
+        );
     }
 
     onLeave(client: Client) {
+        const player = this.gameState.players.get(client.sessionId);
+        const playerName = player?.name ?? "Unknown player";
+
         this.gameState.players.delete(client.sessionId);
         this.inputs.delete(client.sessionId);
         this.lastShotAt.delete(client.sessionId);
+
+        console.log(
+            `[server] Player left: ${playerName} (${client.sessionId})`,
+        );
     }
 
     private update(deltaTime: number) {

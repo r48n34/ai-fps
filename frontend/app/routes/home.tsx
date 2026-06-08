@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
+import { getColyseusServerUrl } from "../utils/colyseusServerUrl";
 import type { Route } from "./+types/home";
 
 type PlayerSnapshot = {
@@ -67,6 +68,11 @@ type LocalVisualState = {
     playerId: string;
 };
 
+type LookState = {
+    yaw: number;
+    pitch: number;
+};
+
 type HitEvent = {
     damage: number;
     targetId: string;
@@ -93,10 +99,7 @@ type Building = {
     jumpable?: boolean;
 };
 
-const SERVER_URL =
-    typeof import.meta.env.VITE_COLYSEUS_URL === "string"
-        ? import.meta.env.VITE_COLYSEUS_URL
-        : "ws://localhost:2567";
+const SERVER_URL = getColyseusServerUrl(import.meta.env.VITE_COLYSEUS_URL);
 
 const GAME_CONFIG = {
     ammoCapacity: 6,
@@ -409,7 +412,6 @@ export default function Home() {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [localSessionId, setLocalSessionId] = useState("");
     const [pointerLocked, setPointerLocked] = useState(false);
-    const [look, setLook] = useState({ yaw: 0, pitch: 0 });
     const [hitMarker, setHitMarker] = useState<HitEvent | null>(null);
     const [damageFlash, setDamageFlash] = useState<DamageEvent | null>(null);
     const [isZooming, setIsZooming] = useState(false);
@@ -419,7 +421,7 @@ export default function Home() {
     const localVisualRef = useRef<LocalVisualState | null>(null);
     const localPlayerRef = useRef<PlayerSnapshot | undefined>(undefined);
     const roomRef = useRef<GameRoom | null>(null);
-    const lookRef = useRef(look);
+    const lookRef = useRef<LookState>({ yaw: 0, pitch: 0 });
     const recoilUntilRef = useRef(0);
     const ammoNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
         null,
@@ -475,10 +477,6 @@ export default function Home() {
     }, [localPlayer]);
 
     useEffect(() => {
-        lookRef.current = look;
-    }, [look]);
-
-    useEffect(() => {
         if (isChatOpen) {
             chatInputRef.current?.focus();
         }
@@ -505,20 +503,18 @@ export default function Home() {
                 return;
             }
 
-            setLook((current) => {
-                const next = {
-                    yaw: normalizeAngle(current.yaw - event.movementX * 0.0024),
-                    pitch: clamp(
-                        current.pitch - event.movementY * 0.002,
-                        -Math.PI / 2 + 0.08,
-                        Math.PI / 2 - 0.08,
-                    ),
-                };
+            const current = lookRef.current;
+            const next = {
+                yaw: normalizeAngle(current.yaw - event.movementX * 0.0024),
+                pitch: clamp(
+                    current.pitch - event.movementY * 0.002,
+                    -Math.PI / 2 + 0.08,
+                    Math.PI / 2 - 0.08,
+                ),
+            };
 
-                sendLook(roomRef.current, next);
-
-                return next;
-            });
+            lookRef.current = next;
+            sendLook(roomRef.current, next);
         };
 
         document.addEventListener("mousemove", onMouseMove);
@@ -581,24 +577,18 @@ export default function Home() {
     const applyAimRecoil = useCallback((weapon: WeaponId) => {
         const pitchKick = weapon === "sniper" ? 0.085 : 0.04;
         const yawKick = weapon === "sniper" ? 0.012 : 0.006;
+        const current = lookRef.current;
+        const next = {
+            yaw: normalizeAngle(current.yaw + (Math.random() - 0.5) * yawKick),
+            pitch: clamp(
+                current.pitch + pitchKick,
+                -Math.PI / 2 + 0.08,
+                Math.PI / 2 - 0.08,
+            ),
+        };
 
-        setLook((current) => {
-            const next = {
-                yaw: normalizeAngle(
-                    current.yaw + (Math.random() - 0.5) * yawKick,
-                ),
-                pitch: clamp(
-                    current.pitch + pitchKick,
-                    -Math.PI / 2 + 0.08,
-                    Math.PI / 2 - 0.08,
-                ),
-            };
-
-            lookRef.current = next;
-            sendLook(roomRef.current, next);
-
-            return next;
-        });
+        lookRef.current = next;
+        sendLook(roomRef.current, next);
     }, []);
 
     useEffect(() => {
@@ -733,17 +723,20 @@ export default function Home() {
             return;
         }
 
-        setLook((current) => {
-            if (
-                Math.abs(current.yaw - localPlayer.yaw) < 0.0001 &&
-                Math.abs(current.pitch - localPlayer.pitch) < 0.0001
-            ) {
-                return current;
-            }
+        if (pointerLocked && localPlayer.isAlive) {
+            return;
+        }
 
-            return { yaw: localPlayer.yaw, pitch: localPlayer.pitch };
-        });
-    }, [localPlayer?.yaw, localPlayer?.pitch]);
+        lookRef.current = {
+            yaw: localPlayer.yaw,
+            pitch: localPlayer.pitch,
+        };
+    }, [
+        localPlayer?.isAlive,
+        localPlayer?.pitch,
+        localPlayer?.yaw,
+        pointerLocked,
+    ]);
 
     const joinGame = useCallback(async () => {
         const displayName = name.trim() || "Player";
@@ -872,7 +865,7 @@ export default function Home() {
                             localPlayer={localPlayer}
                             localSessionId={localSessionId}
                             localVisualRef={localVisualRef}
-                            look={look}
+                            lookRef={lookRef}
                             players={players}
                             recoilUntilRef={recoilUntilRef}
                         />
@@ -906,7 +899,7 @@ function GameScene({
     localPlayer,
     localSessionId,
     localVisualRef,
-    look,
+    lookRef,
     players,
     recoilUntilRef,
 }: {
@@ -915,7 +908,7 @@ function GameScene({
     localPlayer: PlayerSnapshot | undefined;
     localSessionId: string;
     localVisualRef: RefObject<LocalVisualState | null>;
-    look: { yaw: number; pitch: number };
+    lookRef: RefObject<LookState>;
     players: Record<string, PlayerSnapshot>;
     recoilUntilRef: RefObject<number>;
 }) {
@@ -935,7 +928,7 @@ function GameScene({
             localVisualRef,
             localPlayer,
             inputRef.current,
-            look,
+            lookRef.current,
             delta,
         );
         const height = visual.isCrouching
@@ -943,7 +936,12 @@ function GameScene({
             : GAME_CONFIG.standingHeight;
 
         camera.position.set(visual.x, visual.y + height * 0.88, visual.z);
-        camera.rotation.set(look.pitch, look.yaw, 0, "YXZ");
+        camera.rotation.set(
+            lookRef.current.pitch,
+            lookRef.current.yaw,
+            0,
+            "YXZ",
+        );
 
         if (camera instanceof THREE.PerspectiveCamera) {
             camera.fov = THREE.MathUtils.lerp(
@@ -1059,6 +1057,7 @@ function BuildingMesh({ building }: { building: Building }) {
 
 function RemotePlayer({ player }: { player: PlayerSnapshot }) {
     const groupRef = useRef<THREE.Group>(null);
+    const targetPositionRef = useRef(new THREE.Vector3());
     const height = player.isCrouching
         ? GAME_CONFIG.crouchingHeight
         : GAME_CONFIG.standingHeight;
@@ -1079,7 +1078,7 @@ function RemotePlayer({ player }: { player: PlayerSnapshot }) {
         const smoothing = 1 - Math.exp(-18 * delta);
 
         group.position.lerp(
-            new THREE.Vector3(player.x, player.y, player.z),
+            targetPositionRef.current.set(player.x, player.y, player.z),
             smoothing,
         );
         group.rotation.y = THREE.MathUtils.lerp(
@@ -1115,6 +1114,8 @@ function PlayerLabel({ player, y }: { player: PlayerSnapshot; y: number }) {
         () => makeLabelTexture(player.name, player.health),
         [player.health, player.name],
     );
+
+    useEffect(() => () => texture.dispose(), [texture]);
 
     return (
         <sprite position={[0, y, 0]} scale={[2.6, 0.58, 1]}>
